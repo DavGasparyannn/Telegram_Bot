@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
+using Telegram_Bot.Downloaders;
 
 namespace Telegram_Bot
 {
@@ -20,14 +21,21 @@ namespace Telegram_Bot
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             var message = update.Message;
-            if (message != null)
+
+            if (message.Text.ToLower().Contains("/start"))
             {
-                if (message.Text.ToLower().Contains("barev"))
-                {
-                    await client.SendMessage(message.Chat.Id,"Barior brat");
-                    return;
-                }
+                await client.SendMessage(message.Chat.Id, "Hi! please input youtube link for download !!!");
+                return;
             }
+            if (message.Text.StartsWith("https://www.youtube.com"))
+            {
+                string youtubeUrl = message.Text;
+                var UrlForDownload = await YoutubeDownloader.GetAudioDownloadLinkAsync(youtubeUrl);
+                Console.WriteLine();
+                await client.SendAudio(message.Chat.Id, UrlForDownload);
+                return;
+            }
+
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
