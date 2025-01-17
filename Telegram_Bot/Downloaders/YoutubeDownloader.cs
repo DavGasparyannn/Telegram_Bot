@@ -10,43 +10,41 @@ namespace Telegram_Bot.Downloaders
 {
     public static class YoutubeDownloader
     {
-        public static async Task<string> GetAudioDownloadLinkAsync(string youtubeUrl)
+        public static void DownloadAndConvertToMp3(string youtubeUrl)
         {
             try
             {
-                // Используем лучший доступный аудиофайл (формат может быть любым)
-                var processStartInfo = new ProcessStartInfo
+                // Скачивание видео через yt-dlp
+                ProcessStartInfo processStartInfo = new ProcessStartInfo
                 {
-                    FileName = "yt-dlp", // Убедитесь, что yt-dlp установлен и доступен в системе
-                    Arguments = $"-f 134 --get-url {youtubeUrl}", // Получаем ссылку на лучший аудиофайл
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
+                    FileName = @"yt-dlp", // Путь к yt-dlp
+                    Arguments = $"-f bestaudio --no-playlist --get-filename --output \"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\%(title)s.%(ext)s\" {youtubeUrl}",
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                Process.Start(processStartInfo);
+               /* string output = process.StandardOutput.ReadToEnd();*/
+                Process.WaitForExit();
 
-                // Запускаем процесс yt-dlp
-                var process = new Process
+
+                /*// Путь к скачанному видео
+                string downloadedFile = "downloaded_video.webm"; // или другой формат, в зависимости от выбора
+
+                // Преобразование видео в MP3 через ffmpeg
+                Process.Start(new ProcessStartInfo
                 {
-                    StartInfo = processStartInfo
-                };
+                    FileName = @"C:\path\to\ffmpeg.exe", // Путь к ffmpeg
+                    Arguments = $"-i \"{downloadedFile}\" \"{outputMp3Path}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }).WaitForExit();
 
-                process.Start();
-
-                // Чтение стандартного вывода процесса (ссылка на аудиофайл)
-                string audioUrl = process.StandardOutput.ReadLine();
-
-                // process.WaitForExit();
-
-
-                return audioUrl;
+                Console.WriteLine("Конвертация завершена. MP3 файл: " + outputMp3Path);*/
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка при получении аудио URL: {ex.Message}");
-                return null;
+                Console.WriteLine("Ошибка: " + ex.Message);
             }
-
         }
         public static async Task DownloadFileAsync(string url, string filePath)
         {

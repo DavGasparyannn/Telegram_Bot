@@ -40,21 +40,24 @@ namespace Telegram_Bot
 
 
                 string youtubeUrl = message.Text;
+                YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
 
+
+                await client.SendDocument(message.Chat.Id,"");
                 var video = await youtube.Videos.GetAsync(youtubeUrl);
 
-                var UrlForDownload = await YoutubeDownloader.GetAudioDownloadLinkAsync(youtubeUrl);
-                Console.WriteLine();
-                await YoutubeDownloader.DownloadFileAsync(youtubeUrl, $"{userDirectory}\\{video.Title}.mp3");
+             //   var UrlForDownload = YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
+             //   Console.WriteLine();
+             ////   await YoutubeDownloader.DownloadFileAsync(youtubeUrl, $"{userDirectory}\\{video.Title}.mp3");
 
-                await client.SendAudio(message.Chat.Id, UrlForDownload);
+             //   await client.SendAudio(message.Chat.Id, UrlForDownload);
                 return;
             }
 
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"Telegram Bot: Error {exception.Message} ....... {source}" );
         }
     }
 }
