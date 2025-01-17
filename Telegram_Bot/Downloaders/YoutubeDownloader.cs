@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,7 +18,7 @@ namespace Telegram_Bot.Downloaders
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp", // Убедитесь, что yt-dlp установлен и доступен в системе
-                    Arguments = $"-f bestaudio --get-url {youtubeUrl}", // Получаем ссылку на лучший аудиофайл
+                    Arguments = $"-f 134 --get-url {youtubeUrl}", // Получаем ссылку на лучший аудиофайл
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -34,20 +35,9 @@ namespace Telegram_Bot.Downloaders
 
                 // Чтение стандартного вывода процесса (ссылка на аудиофайл)
                 string audioUrl = process.StandardOutput.ReadLine();
-                string errorOutput = process.StandardError.ReadToEnd(); // Чтение ошибок
 
-                process.WaitForExit();
+                // process.WaitForExit();
 
-                // Логирование ошибок
-                if (!string.IsNullOrEmpty(errorOutput))
-                {
-                    Console.WriteLine($"Ошибка при выполнении yt-dlp: {errorOutput}");
-                }
-
-                if (string.IsNullOrEmpty(audioUrl))
-                {
-                    Console.WriteLine("Не удалось получить ссылку на аудиофайл.");
-                }
 
                 return audioUrl;
             }
@@ -57,6 +47,33 @@ namespace Telegram_Bot.Downloaders
                 return null;
             }
 
+        }
+        public static async Task DownloadFileAsync(string url, string filePath)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    // Получаем данные с сервера
+                    using (HttpResponseMessage response = await client.GetAsync(url))
+                    {
+                        response.EnsureSuccessStatusCode(); // Проверяем, что запрос успешен
+
+                        // Читаем содержимое ответа в виде потока
+                        using (Stream contentStream = await response.Content.ReadAsStreamAsync(),
+                               fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            // Копируем содержимое в файл
+                            await contentStream.CopyToAsync(fileStream);
+                            Console.WriteLine("Файл успешно загружен и сохранён.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка при скачивании файла: {ex.Message}");
+                }
+            }
         }
     }
 }

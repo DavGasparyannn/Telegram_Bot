@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="telegram.bot" Version="22.3.0" />
+    <PackageReference Include="YouTubeExplode" Version="6.5.1" />
   </ItemGroup>
 
 </Project>
