@@ -28,6 +28,8 @@ namespace Telegram_Bot
             var message = update.Message;
             string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}";
             string loggerPath = $"{userDirectory}/messages.txt";
+            string loggerMessage;
+            loggerMessage = $"{DateTime.Now}: {message.Text}";
             if (message.Text.ToLower().Contains("/start"))
             {
 
@@ -39,22 +41,25 @@ namespace Telegram_Bot
                 }
                 return;
             }
-                string userMessage = $"{DateTime.Now}: {message.Text}\n";
-                File.AppendAllText(loggerPath, userMessage);
 
             if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
             {
+                var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
                 string youtubeUrl = message.Text;
+
                 YoutubeClient youtubeClient = new YoutubeClient();
+                var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
+                loggerMessage += $", Title : {video.Title}";
+
 
                 YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
-                var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
 
                 await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
                 await client.SendAudio(message.Chat.Id, stream, title : $"{video.Title}");
 
-                return;
+                await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
             }
+                File.AppendAllText(loggerPath, loggerMessage + "\n");
 
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
