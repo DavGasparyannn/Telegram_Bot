@@ -36,17 +36,21 @@ namespace Telegram_Bot
             }
             if (message.Text.StartsWith("https://www.youtube.com"))
             {
-               /* await using Stream stream = File.OpenRead("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\Artur - Судьба.mp3");
-                message = await client.SendDocument(message.Chat.Id, document: InputFile.FromStream(stream, "C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\Artur - Судьба.mp3"));*/
+                string youtubeUrl = message.Text;
+                YoutubeClient youtubeClient = new YoutubeClient();
+
+                YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
+                var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
+
+                await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
+                await client.SendAudio(message.Chat.Id, stream);
+
                 /*message = await client.SendAudio(message.Chat.Id, "C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\Artur - Судьба.mp3"
    //  , performer: "Joel Thomas Hunger", title: "Fun Guitar and Ukulele", duration: 91    // optional
    );*/
 
-                string youtubeUrl = message.Text;
-                YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
 
 
-                await client.SendDocument(message.Chat.Id, "");
                 /*var video = await youtube.Videos.GetAsync(youtubeUrl);*/
 
                 //   var UrlForDownload = YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
