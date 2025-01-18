@@ -26,45 +26,48 @@ namespace Telegram_Bot
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             var message = update.Message;
-            string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}";
-            string loggerPath = $"{userDirectory}/messages.txt";
-            string loggerMessage;
-            loggerMessage = $"{DateTime.Now}: {message.Text}";
-            if (message.Text.ToLower().Contains("/start"))
+            if (message != null)
             {
+                string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username}";
+                string loggerPath = $"{userDirectory}/messages.txt";
 
-                await client.SendMessage(message.Chat.Id, "Hi! please input youtube link for download !!!");
-                Directory.CreateDirectory(userDirectory);
-                if (!File.Exists(loggerPath))
+                string loggerMessage;
+                loggerMessage = $"{DateTime.Now}: {message.Text}";
+                if (message.Text.ToLower().Contains("/start"))
                 {
-                    File.Create(loggerPath).Dispose(); 
+
+                    await client.SendMessage(message.Chat.Id, "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню (пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌");
+                    Directory.CreateDirectory(userDirectory);
+                    if (!File.Exists(loggerPath))
+                    {
+                        File.Create(loggerPath).Dispose();
+                    }
+                    return;
                 }
-                return;
-            }
 
-            if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
-            {
-                var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
-                string youtubeUrl = message.Text;
+                if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
+                {
+                    var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
+                    string youtubeUrl = message.Text;
 
-                YoutubeClient youtubeClient = new YoutubeClient();
-                var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
-                loggerMessage += $", Title : {video.Title}";
+                    YoutubeClient youtubeClient = new YoutubeClient();
+                    var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
+                    loggerMessage += $", Title : {video.Title}";
 
 
-                YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
+                    YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
 
-                await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
-                await client.SendAudio(message.Chat.Id, stream, title : $"{video.Title}");
+                    await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
+                    await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘");
 
-                await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-            }
+                    await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
+                }
                 File.AppendAllText(loggerPath, loggerMessage + "\n");
-
+            }
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
-            Console.WriteLine($"Telegram Bot: Error {exception.Message} ....... {source}" );
+            File.AppendAllText("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
         }
     }
 }
