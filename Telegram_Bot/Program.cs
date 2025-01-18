@@ -27,14 +27,22 @@ namespace Telegram_Bot
         {
             var message = update.Message;
             string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}";
+            string loggerPath = $"{userDirectory}/messages.txt";
             if (message.Text.ToLower().Contains("/start"))
             {
 
                 await client.SendMessage(message.Chat.Id, "Hi! please input youtube link for download !!!");
                 Directory.CreateDirectory(userDirectory);
+                if (!File.Exists(loggerPath))
+                {
+                    File.Create(loggerPath).Dispose(); // Создаем файл, если его нет
+                }
                 return;
             }
-            if (message.Text.StartsWith("https://www.youtube.com"))
+                string userMessage = $"{DateTime.Now}: {message.Text}\n";
+                File.AppendAllText(loggerPath, userMessage);
+
+            if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
             {
                 string youtubeUrl = message.Text;
                 YoutubeClient youtubeClient = new YoutubeClient();
@@ -43,7 +51,7 @@ namespace Telegram_Bot
                 var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
 
                 await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
-                await client.SendAudio(message.Chat.Id, stream);
+                await client.SendAudio(message.Chat.Id, stream, title : $"{video.Title}");
 
                 /*message = await client.SendAudio(message.Chat.Id, "C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\Artur - Судьба.mp3"
    //  , performer: "Joel Thomas Hunger", title: "Fun Guitar and Ukulele", duration: 91    // optional
