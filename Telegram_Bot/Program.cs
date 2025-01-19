@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using Telegram_Bot.Downloaders;
 using YoutubeExplode;
 using YoutubeExplode.Videos;
@@ -26,6 +27,8 @@ namespace Telegram_Bot
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             var message = update.Message;
+            /*var replyMarkup = new ReplyKeyboardMarkup(true)
+    .AddButtons("Help me", "Call me ☎️");*/
             if (message != null)
             {
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
@@ -69,6 +72,7 @@ namespace Telegram_Bot
                     {
                         await client.SendMessage(message.Chat.Id, "Отправьте видео с длительностью менее 10-и минут");
                     }
+                    return;
 
                 }
             }
