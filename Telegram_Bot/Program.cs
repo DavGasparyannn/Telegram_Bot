@@ -28,7 +28,7 @@ namespace Telegram_Bot
             var message = update.Message;
             if (message != null)
             {
-                string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username}";
+                string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
                 string loggerPath = $"{userDirectory}/messages.txt";
 
                 string loggerMessage;
@@ -47,27 +47,35 @@ namespace Telegram_Bot
 
                 if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
                 {
-                    var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
+
                     string youtubeUrl = message.Text;
 
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
                     loggerMessage += $", Title : {video.Title}";
 
+                    if (video.Duration <= TimeSpan.FromMinutes(10))
+                    {
+                        var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
+                        YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
+                        await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
+                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘");
+                        await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
+                        File.Delete($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
+                        File.AppendAllText(loggerPath, loggerMessage + "\n");
+                        Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
+                    }
+                    else
+                    {
+                        await client.SendMessage(message.Chat.Id, "Отправьте видео с длительностью менее 10-и минут");
+                    }
 
-                    YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
-
-                    await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
-                    await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘");
-
-                    await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
                 }
-                File.AppendAllText(loggerPath, loggerMessage + "\n");
             }
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
-            File.AppendAllText("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
+           await File.AppendAllTextAsync("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
         }
     }
 }
