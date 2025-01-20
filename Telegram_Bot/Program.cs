@@ -11,7 +11,10 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Telegram_Bot.Downloaders;
 using YoutubeExplode;
 using YoutubeExplode.Videos;
-
+using TagLib;
+using File = System.IO.File;
+using TagLib.Mpeg4;
+using System.Runtime.CompilerServices;
 namespace Telegram_Bot
 {
     internal class Program
@@ -31,10 +34,11 @@ namespace Telegram_Bot
             Console.ReadLine();
             cancellationTokenSource.Cancel();
         }
-
+             static Helper helper = new Helper();
 
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
+            
             var message = update.Message;
             if (message != null)
             {
@@ -46,14 +50,15 @@ namespace Telegram_Bot
 
                 if (message.Text == ("/start"))
                 {
-                    var replyKeyboard = new InlineKeyboardMarkup(new[]
-                         {
-                    InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_video")
+                    var menuKeyboard = new InlineKeyboardMarkup(new[]
+                {
+                    new[] { InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_song") },
+                    new[] { InlineKeyboardButton.WithCallbackData("Редактировать песню", "edit_song") }
                 });
                     await client.SendMessage(
                     chatId: message.Chat.Id,
                     text: "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню(пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌",
-                    replyMarkup: replyKeyboard,
+                    replyMarkup: menuKeyboard,
                     cancellationToken: token
                     );
 
@@ -67,6 +72,7 @@ namespace Telegram_Bot
                     }
                     return;
                 }
+
                 else if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
                 {
 
@@ -74,16 +80,25 @@ namespace Telegram_Bot
 
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
+                    helper.filePath = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a";
                     loggerMessage += $", Title : {video.Title}";
 
                     if (video.Duration <= TimeSpan.FromMinutes(10))
                     {
-                        var loadingMessage = await client.SendMessage(message.Chat.Id, "Идёт отправка песни...");
+                        var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳**Пожалуйста подождите, идёт отправка песни...**");
                         YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
-                        await using Stream stream = File.OpenRead($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
-                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘");
+                        await using Stream stream = File.OpenRead($"{helper.filePath}");
+
+                        var songDownloadedMenuKeyboard= new InlineKeyboardMarkup(new[]
+                {
+                    new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
+                    new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
+                });
+                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘",replyMarkup : songDownloadedMenuKeyboard);
                         await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-                        File.Delete($"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a");
+
+                        
+                        
                         File.AppendAllText(loggerPath, loggerMessage + "\n");
                         Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
                     }
@@ -99,14 +114,37 @@ namespace Telegram_Bot
             {
                 var callbackQuery = update.CallbackQuery;
 
-                if (callbackQuery.Data == "download_video")
+                if (callbackQuery.Data == "save_song")
+                {
+                    await client.SendMessage(
+                        chatId: callbackQuery.Message.Chat.Id,
+                        text: "Спасибо что пользуетесь нашим ботом🎵\r\nЖдём вас заново, можете отправлять ссылку🎵",
+                        cancellationToken: token
+                    );
+                    File.Delete($"{helper.filePath}");
+                }else if (callbackQuery.Data == "change_song_name")
+                {
+                    await client.SendMessage(
+                        chatId: callbackQuery.Message.Chat.Id,
+                        text: "Введи имя для песни:",
+                        cancellationToken: token
+                    );
+                }
+                else if (callbackQuery.Data == "download_song")
                 {
                     await client.SendMessage(
                         chatId: callbackQuery.Message.Chat.Id,
                         text: "Отправьте ссылку на видео.",
                         cancellationToken: token
                     );
-
+                }
+                else if (callbackQuery.Data == "edit_song")
+                {
+                    await client.SendMessage(
+                        chatId: callbackQuery.Message.Chat.Id,
+                        text: "Отправьте песню для редактирования",
+                        cancellationToken: token
+                    );
                 }
             }
         }

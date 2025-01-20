@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="telegram.bot" Version="22.3.0" />
     <PackageReference Include="YouTubeExplode" Version="6.5.1" />
   </ItemGroup>
