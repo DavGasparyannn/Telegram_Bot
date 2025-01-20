@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram_Bot.Downloaders;
 using YoutubeExplode;
@@ -19,16 +20,22 @@ namespace Telegram_Bot
         {
             Environment.SetEnvironmentVariable("SLAVA_UKRAINI", "1");
             var client = new TelegramBotClient("7824764223:AAEBQywOoE8-sCyscVMQexcs-3TOd38ozxU");
-            client.StartReceiving(Update, Error);
-            Console.ReadKey();
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            client.StartReceiving(Update, Error,
+                new Telegram.Bot.Polling.ReceiverOptions
+                {
+                    AllowedUpdates = { } // Получать все типы обновлений
+                },
+            cancellationToken);
+            Console.ReadLine();
+            cancellationTokenSource.Cancel();
         }
 
 
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             var message = update.Message;
-            /*var replyMarkup = new ReplyKeyboardMarkup(true)
-    .AddButtons("Help me", "Call me ☎️");*/
             if (message != null)
             {
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
@@ -36,19 +43,31 @@ namespace Telegram_Bot
 
                 string loggerMessage;
                 loggerMessage = $"{DateTime.Now}: {message.Text}";
-                if (message.Text.ToLower().Contains("/start"))
-                {
 
-                    await client.SendMessage(message.Chat.Id, "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню (пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌");
-                    Directory.CreateDirectory(userDirectory);
+                if (message.Text == ("/start"))
+                {
+                    var replyKeyboard = new InlineKeyboardMarkup(new[]
+                         {
+                    InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_video")
+                });
+                    await client.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню(пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌",
+                    replyMarkup: replyKeyboard,
+                    cancellationToken: token
+                    );
+
+                    if (!Directory.Exists(userDirectory))
+                    {
+                        Directory.CreateDirectory(userDirectory);
+                    }
                     if (!File.Exists(loggerPath))
                     {
                         File.Create(loggerPath).Dispose();
                     }
                     return;
                 }
-
-                if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
+                else if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
                 {
 
                     string youtubeUrl = message.Text;
@@ -76,10 +95,24 @@ namespace Telegram_Bot
 
                 }
             }
+            else if (update.Type == UpdateType.CallbackQuery && update.CallbackQuery != null)
+            {
+                var callbackQuery = update.CallbackQuery;
+
+                if (callbackQuery.Data == "download_video")
+                {
+                    await client.SendMessage(
+                        chatId: callbackQuery.Message.Chat.Id,
+                        text: "Отправьте ссылку на видео.",
+                        cancellationToken: token
+                    );
+
+                }
+            }
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
-           await File.AppendAllTextAsync("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
+            await File.AppendAllTextAsync("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
         }
     }
 }
