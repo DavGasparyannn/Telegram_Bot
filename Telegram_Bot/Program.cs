@@ -15,6 +15,7 @@ using TagLib;
 using File = System.IO.File;
 using TagLib.Mpeg4;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 namespace Telegram_Bot
 {
     internal class Program
@@ -34,12 +35,22 @@ namespace Telegram_Bot
             Console.ReadLine();
             cancellationTokenSource.Cancel();
         }
-             static Helper helper = new Helper();
 
+        static Helper helper = new Helper();
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             
             var message = update.Message;
+            if(helper.isRenamingSong && message != null && helper.chatId == message.Chat.Id)
+            {
+                string newSongName = message.Text;
+                await using Stream stream = File.OpenRead($"{helper.filePath}"); 
+
+                await client.SendAudio(message.Chat.Id, stream, title: $"{newSongName}");
+                helper.isRenamingSong = false;
+                File.Delete($"{helper.filePath}");
+                return;
+            }
             if (message != null)
             {
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
@@ -77,27 +88,33 @@ namespace Telegram_Bot
                 {
 
                     string youtubeUrl = message.Text;
-
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
+                    string title = video.Title;
                     helper.filePath = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a";
+                    if (title.Contains(@"\"))
+                    {
+                        helper.ChangeEscapedFileName(helper.filePath);
+                    }
+                    helper.chatId = message.Chat.Id;
                     loggerMessage += $", Title : {video.Title}";
 
                     if (video.Duration <= TimeSpan.FromMinutes(10))
                     {
                         var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳**Пожалуйста подождите, идёт отправка песни...**");
                         YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
-                        await using Stream stream = File.OpenRead($"{helper.filePath}");
 
-                        var songDownloadedMenuKeyboard= new InlineKeyboardMarkup(new[]
+                        await using Stream stream = File.OpenRead($@"{helper.filePath}");
+
+                        var songDownloadedMenuKeyboard = new InlineKeyboardMarkup(new[]
                 {
                     new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
                     new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
                 });
-                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘",replyMarkup : songDownloadedMenuKeyboard);
+                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘", replyMarkup: songDownloadedMenuKeyboard);
                         await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-
                         
+
                         
                         File.AppendAllText(loggerPath, loggerMessage + "\n");
                         Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
@@ -122,8 +139,10 @@ namespace Telegram_Bot
                         cancellationToken: token
                     );
                     File.Delete($"{helper.filePath}");
-                }else if (callbackQuery.Data == "change_song_name")
+                }
+                else if (callbackQuery.Data == "change_song_name")
                 {
+                    helper.isRenamingSong = true;
                     await client.SendMessage(
                         chatId: callbackQuery.Message.Chat.Id,
                         text: "Введи имя для песни:",
