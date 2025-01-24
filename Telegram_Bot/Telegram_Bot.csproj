@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SpotifyAPI" Version="1.2.0" />
+    <PackageReference Include="SpotifyAPI.Web" Version="7.2.1" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="telegram.bot" Version="22.3.0" />
     <PackageReference Include="YouTubeExplode" Version="6.5.1" />

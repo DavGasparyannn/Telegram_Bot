@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Telegram.Bot.Types;
+using YoutubeExplode.Videos;
 
 namespace Telegram_Bot
 {
@@ -16,11 +17,19 @@ namespace Telegram_Bot
 
         // Можно использовать для хранения пути к файлу, который будет отправлен
         public  string filePath { get; set; }
-        public void ChangeEscapedFileName(string filePath)
+        public void ChangeEscapedFileName(string titleForChange)
         {
-            string newFilePath = filePath.Replace("\\", "-");
-            File.Move(filePath,newFilePath);
-            this.filePath = newFilePath;
+            string newTitle = MakeFileNameSafe(titleForChange);
+            filePath = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{newTitle}.m4a";
+        }
+        public static string MakeFileNameSafe(string name)
+        {
+            char[] invalidChars = Path.GetInvalidFileNameChars(); // Запрещённые символы
+            foreach (var c in invalidChars)
+            {
+                name = name.Replace(c, '-'); // Заменяем запрещённые символы на `-`
+            }
+            return name;
         }
     }
 }

@@ -16,16 +16,29 @@ using File = System.IO.File;
 using TagLib.Mpeg4;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using SpotifyAPI.Web;
+using System.Collections.Generic;
+using System.Linq;
 namespace Telegram_Bot
 {
     internal class Program
     {
+        private static string SpotifyClientId = "ccfb561c2d5d48ca84f31d4b1cd28ae7";
+        private static string SpotifyClientSecret = "b18447dc19f346518ce6c398a35e00bb";
+        private static SpotifyClient spotifyClient;
+        private static Dictionary<long, List<FullTrack>> userTrackSelections = new Dictionary<long, List<FullTrack>>();
         static void Main(string[] args)
         {
             Environment.SetEnvironmentVariable("SLAVA_UKRAINI", "1");
             var client = new TelegramBotClient("7824764223:AAEBQywOoE8-sCyscVMQexcs-3TOd38ozxU");
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
+
+            var spotifyConfig = SpotifyClientConfig
+            .CreateDefault()
+            .WithAuthenticator(new ClientCredentialsAuthenticator(SpotifyClientId, SpotifyClientSecret));
+            spotifyClient = new SpotifyClient(spotifyConfig);
+
             client.StartReceiving(Update, Error,
                 new Telegram.Bot.Polling.ReceiverOptions
                 {
@@ -53,6 +66,51 @@ namespace Telegram_Bot
             }
             if (message != null)
             {
+                if (message.Text.StartsWith("/song", StringComparison.OrdinalIgnoreCase) ||
+            message.Text.StartsWith("найди", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Извлекаем запрос из сообщения (удаляем ключевое слово "/song" или "найди")
+                    var searchQuery = message.Text.Contains(" ") ? message.Text[(message.Text.IndexOf(" ") + 1)..] : "";
+
+                    if (string.IsNullOrWhiteSpace(searchQuery))
+                    {
+                        await client.SendMessage(
+                            chatId: update.Message.Chat.Id,
+                            text: "Пожалуйста, напишите название песни после команды /song или слова 'найди'.",
+                            cancellationToken: token
+                        );
+                        return;
+                    }
+
+                    // Выполняем поиск песен
+                    var tracks = await SearchTracksAsync(searchQuery);
+
+                    // Если ничего не найдено
+                    if (tracks.Count == 0)
+                    {
+                        await client.SendMessage(
+                            chatId: update.Message.Chat.Id,
+                            text: "Ничего не найдено. Попробуй ввести другое название песни.",
+                            cancellationToken: token
+                        );
+                        return;
+                    }
+
+                    // Формируем список треков
+                    string response = "Вот что удалось найти:\n";
+                    for (int i = 0; i < tracks.Count; i++)
+                    {
+                        response += $"{i + 1}. {tracks[i].Name} - {tracks[i].Artists.FirstOrDefault()?.Name}\n";
+                    }
+
+                    // Отправляем результат пользователю
+                    await client.SendMessage(
+                        chatId: update.Message.Chat.Id,
+                        text: response,
+                        cancellationToken: token
+                    );
+                }
+
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
                 string loggerPath = $"{userDirectory}/messages.txt";
 
@@ -91,19 +149,16 @@ namespace Telegram_Bot
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
                     string title = video.Title;
-                    helper.filePath = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{video.Title}.m4a";
-                    if (title.Contains(@"\"))
-                    {
-                        helper.ChangeEscapedFileName(helper.filePath);
-                    }
-                    helper.chatId = message.Chat.Id;
+                   
                     loggerMessage += $", Title : {video.Title}";
 
                     if (video.Duration <= TimeSpan.FromMinutes(10))
                     {
-                        var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳**Пожалуйста подождите, идёт отправка песни...**");
-                        YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl);
+                        var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳Пожалуйста подождите, идёт отправка песни...");
+                        YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl,video);
 
+                            helper.ChangeEscapedFileName(title);
+                        helper.chatId = message.Chat.Id;
                         await using Stream stream = File.OpenRead($@"{helper.filePath}");
 
                         var songDownloadedMenuKeyboard = new InlineKeyboardMarkup(new[]
@@ -170,6 +225,16 @@ namespace Telegram_Bot
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {
             await File.AppendAllTextAsync("C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\ErrorLog.txt", $"Error : {exception.Message} ....... {source} : {DateTime.Now}\n");
+        }
+        private static async Task<List<FullTrack>> SearchTracksAsync(string query)
+        {
+            var searchRequest = new SearchRequest(SearchRequest.Types.Track, query)
+            {
+                Limit = 10 // Максимум 10 результатов
+            };
+
+            var searchResponse = await spotifyClient.Search.Item(searchRequest);
+            return searchResponse.Tracks?.Items?.ToList() ?? new List<FullTrack>();
         }
     }
 }
