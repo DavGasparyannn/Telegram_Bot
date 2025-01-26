@@ -66,56 +66,13 @@ namespace Telegram_Bot
             }
             if (message != null)
             {
-                if (message.Text.StartsWith("/song", StringComparison.OrdinalIgnoreCase) ||
-            message.Text.StartsWith("найди", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Извлекаем запрос из сообщения (удаляем ключевое слово "/song" или "найди")
-                    var searchQuery = message.Text.Contains(" ") ? message.Text[(message.Text.IndexOf(" ") + 1)..] : "";
-
-                    if (string.IsNullOrWhiteSpace(searchQuery))
-                    {
-                        await client.SendMessage(
-                            chatId: update.Message.Chat.Id,
-                            text: "Пожалуйста, напишите название песни после команды /song или слова 'найди'.",
-                            cancellationToken: token
-                        );
-                        return;
-                    }
-
-                    // Выполняем поиск песен
-                    var tracks = await SearchTracksAsync(searchQuery);
-
-                    // Если ничего не найдено
-                    if (tracks.Count == 0)
-                    {
-                        await client.SendMessage(
-                            chatId: update.Message.Chat.Id,
-                            text: "Ничего не найдено. Попробуй ввести другое название песни.",
-                            cancellationToken: token
-                        );
-                        return;
-                    }
-
-                    // Формируем список треков
-                    string response = "Вот что удалось найти:\n";
-                    for (int i = 0; i < tracks.Count; i++)
-                    {
-                        response += $"{i + 1}. {tracks[i].Name} - {tracks[i].Artists.FirstOrDefault()?.Name}\n";
-                    }
-
-                    // Отправляем результат пользователю
-                    await client.SendMessage(
-                        chatId: update.Message.Chat.Id,
-                        text: response,
-                        cancellationToken: token
-                    );
-                }
 
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
                 string loggerPath = $"{userDirectory}/messages.txt";
 
                 string loggerMessage;
                 loggerMessage = $"{DateTime.Now}: {message.Text}";
+                
 
                 if (message.Text == ("/start"))
                 {
@@ -140,6 +97,51 @@ namespace Telegram_Bot
                         File.Create(loggerPath).Dispose();
                     }
                     return;
+                }
+                else if (message.Text.StartsWith("/song", StringComparison.OrdinalIgnoreCase) ||
+            message.Text.StartsWith("найди", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Извлекаем запрос из сообщения (удаляем ключевое слово "/song" или "найди")
+                    var searchQuery = message.Text.Contains(" ") ? message.Text[(message.Text.IndexOf(" ") + 1)..] : "";
+
+                    if (string.IsNullOrWhiteSpace(searchQuery))
+                    {
+                        await client.SendMessage(
+                            chatId: update.Message.Chat.Id,
+                            text: "Пожалуйста, напишите название песни после команды /song или слова 'найди'.",
+                            cancellationToken: token
+                        );
+                        return;
+                    }
+
+                    // Выполняем поиск песен
+                    var tracks = await SearchTracksAsync(searchQuery);
+                    helper.chatId = message.Chat.Id;
+                    helper.trackList = tracks;
+                    // Если ничего не найдено
+                    if (tracks.Count == 0)
+                    {
+                        await client.SendMessage(
+                            chatId: update.Message.Chat.Id,
+                            text: "Ничего не найдено. Попробуй ввести другое название песни.",
+                            cancellationToken: token
+                        );
+                        return;
+                    }
+
+                    // Формируем список треков
+                    string response = "Вот что удалось найти:\n";
+                    for (int i = 0; i < tracks.Count; i++)
+                    {
+                        response += $"{i + 1}. {tracks[i].Name} - {tracks[i].Artists.FirstOrDefault()?.Name}\n";
+                    }
+
+                    // Отправляем результат пользователю
+                    await client.SendMessage(
+                        chatId: update.Message.Chat.Id,
+                        text: response,
+                        cancellationToken: token
+                    );
                 }
 
                 else if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
@@ -179,7 +181,14 @@ namespace Telegram_Bot
                         await client.SendMessage(message.Chat.Id, "Отправьте видео с длительностью менее 10-и минут");
                     }
                     return;
-
+                    
+                }
+                else if (int.TryParse(message.Text,out int result) && (result >=1 && result<=10))
+                {
+                    if (helper.chatId == message.Chat.Id && helper.trackList.Count >0)
+                    {
+                        
+                    }
                 }
             }
             else if (update.Type == UpdateType.CallbackQuery && update.CallbackQuery != null)

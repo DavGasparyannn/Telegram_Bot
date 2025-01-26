@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpotifyAPI.Web;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -17,6 +18,7 @@ namespace Telegram_Bot
 
         // Можно использовать для хранения пути к файлу, который будет отправлен
         public  string filePath { get; set; }
+        public List<FullTrack> trackList { get; set; }
         public void ChangeEscapedFileName(string titleForChange)
         {
             string newTitle = MakeFileNameSafe(titleForChange);
