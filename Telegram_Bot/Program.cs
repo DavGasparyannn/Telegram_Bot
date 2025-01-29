@@ -19,6 +19,7 @@ using System.Text.RegularExpressions;
 using SpotifyAPI.Web;
 using System.Collections.Generic;
 using System.Linq;
+using YoutubeExplode.Common;
 namespace Telegram_Bot
 {
     internal class Program
@@ -52,12 +53,11 @@ namespace Telegram_Bot
         static Helper helper = new Helper();
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
-            
             var message = update.Message;
-            if(helper.isRenamingSong && message != null && helper.chatId == message.Chat.Id)
+            if (helper.isRenamingSong && message != null && helper.chatId == message.Chat.Id)
             {
                 string newSongName = message.Text;
-                await using Stream stream = File.OpenRead($"{helper.filePath}"); 
+                await using Stream stream = File.OpenRead($"{helper.filePath}");
 
                 await client.SendAudio(message.Chat.Id, stream, title: $"{newSongName}");
                 helper.isRenamingSong = false;
@@ -66,26 +66,24 @@ namespace Telegram_Bot
             }
             if (message != null)
             {
-
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
                 string loggerPath = $"{userDirectory}/messages.txt";
 
                 string loggerMessage;
                 loggerMessage = $"{DateTime.Now}: {message.Text}";
-                
 
                 if (message.Text == ("/start"))
                 {
                     var menuKeyboard = new InlineKeyboardMarkup(new[]
-                {
-                    new[] { InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_song") },
-                    new[] { InlineKeyboardButton.WithCallbackData("Редактировать песню", "edit_song") }
-                });
+                    {
+                new[] { InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_song") },
+                new[] { InlineKeyboardButton.WithCallbackData("Редактировать песню", "edit_song") }
+            });
                     await client.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню(пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌",
-                    replyMarkup: menuKeyboard,
-                    cancellationToken: token
+                        chatId: message.Chat.Id,
+                        text: "Привет😜 Я тебе помогу скачать твои любимые песни с YouTube❤️\r\nПросто отправь мне ссылку на эту песню(пр. \"https://www.youtube.com/Ссылка_на_песню\" или \"https://youtu.be/Ссылка_на_песню\")👌",
+                        replyMarkup: menuKeyboard,
+                        cancellationToken: token
                     );
 
                     if (!Directory.Exists(userDirectory))
@@ -99,9 +97,8 @@ namespace Telegram_Bot
                     return;
                 }
                 else if (message.Text.StartsWith("/song", StringComparison.OrdinalIgnoreCase) ||
-            message.Text.StartsWith("найди", StringComparison.OrdinalIgnoreCase))
+                         message.Text.StartsWith("найди", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Извлекаем запрос из сообщения (удаляем ключевое слово "/song" или "найди")
                     var searchQuery = message.Text.Contains(" ") ? message.Text[(message.Text.IndexOf(" ") + 1)..] : "";
 
                     if (string.IsNullOrWhiteSpace(searchQuery))
@@ -114,11 +111,10 @@ namespace Telegram_Bot
                         return;
                     }
 
-                    // Выполняем поиск песен
                     var tracks = await SearchTracksAsync(searchQuery);
                     helper.chatId = message.Chat.Id;
                     helper.trackList = tracks;
-                    // Если ничего не найдено
+
                     if (tracks.Count == 0)
                     {
                         await client.SendMessage(
@@ -129,50 +125,44 @@ namespace Telegram_Bot
                         return;
                     }
 
-                    // Формируем список треков
                     string response = "Вот что удалось найти:\n";
                     for (int i = 0; i < tracks.Count; i++)
                     {
                         response += $"{i + 1}. {tracks[i].Name} - {tracks[i].Artists.FirstOrDefault()?.Name}\n";
                     }
 
-                    // Отправляем результат пользователю
                     await client.SendMessage(
                         chatId: update.Message.Chat.Id,
                         text: response,
                         cancellationToken: token
                     );
                 }
-
                 else if (message.Text.StartsWith("https://www.youtube.com") || message.Text.StartsWith("https://youtu.be/"))
                 {
-
                     string youtubeUrl = message.Text;
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
                     string title = video.Title;
-                   
+
                     loggerMessage += $", Title : {video.Title}";
 
                     if (video.Duration <= TimeSpan.FromMinutes(10))
                     {
                         var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳Пожалуйста подождите, идёт отправка песни...");
-                        YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl,video);
+                        YoutubeDownloader.DownloadAndConvertToMp3(youtubeUrl, video);
 
-                            helper.ChangeEscapedFileName(title);
+                        helper.ChangeEscapedFileName(title);
                         helper.chatId = message.Chat.Id;
                         await using Stream stream = File.OpenRead($@"{helper.filePath}");
 
                         var songDownloadedMenuKeyboard = new InlineKeyboardMarkup(new[]
-                {
+                        {
                     new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
                     new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
                 });
                         await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘", replyMarkup: songDownloadedMenuKeyboard);
                         await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-                        
 
-                        
                         File.AppendAllText(loggerPath, loggerMessage + "\n");
                         Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
                     }
@@ -181,13 +171,70 @@ namespace Telegram_Bot
                         await client.SendMessage(message.Chat.Id, "Отправьте видео с длительностью менее 10-и минут");
                     }
                     return;
-                    
                 }
-                else if (int.TryParse(message.Text,out int result) && (result >=1 && result<=10))
+                else if (int.TryParse(message.Text, out int result) && (result >= 1 && result <= 10))
                 {
-                    if (helper.chatId == message.Chat.Id && helper.trackList.Count >0)
+                    if (helper.chatId == message.Chat.Id && helper.trackList.Count > 0)
                     {
-                        
+                        var selectedTrack = helper.trackList[result - 1];
+                        string searchQuery = $"{selectedTrack.Name} {selectedTrack.Artists.FirstOrDefault()?.Name}";
+
+                        var searchingMessage = await client.SendMessage(
+                            chatId: message.Chat.Id,
+                            text: $"Ищу и скачиваю: {selectedTrack.Name} - {selectedTrack.Artists.FirstOrDefault()?.Name}...",
+                            cancellationToken: token
+                        );
+
+                        // Поиск трека на YouTube
+                        var youtubeClient = new YoutubeClient();
+                        var searchResults = await youtubeClient.Search.GetVideosAsync(searchQuery);
+                        var videoSearchResult = searchResults.FirstOrDefault();
+
+                        if (videoSearchResult != null)
+                        {
+                            // Получаем полную информацию о видео (объект типа Video)
+                            var video = await youtubeClient.Videos.GetAsync(videoSearchResult.Id);
+
+                            if (video != null)
+                            {
+                                await client.DeleteMessage(message.Chat.Id,searchingMessage.MessageId);
+                                var loadingMessage = await client.SendMessage(message.Chat.Id, "⏳Пожалуйста подождите, идёт отправка песни...");
+
+                                // Скачивание и конвертация в MP3
+                                YoutubeDownloader.DownloadAndConvertToMp3(video.Url, video);
+
+                                helper.ChangeEscapedFileName(video.Title);
+                                helper.chatId = message.Chat.Id;
+                                await using Stream stream = File.OpenRead($@"{helper.filePath}");
+
+                                var songDownloadedMenuKeyboard = new InlineKeyboardMarkup(new[]
+                                {
+                    new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
+                    new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
+                });
+                                await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘", replyMarkup: songDownloadedMenuKeyboard);
+                                await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
+
+                                File.AppendAllText(loggerPath, loggerMessage + "\n");
+                                Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
+                            }
+                            else
+                            {
+                                await client.SendMessage(
+                                    chatId: message.Chat.Id,
+                                    text: "Не удалось получить информацию о видео.",
+                                    cancellationToken: token
+                                );
+                            }
+                        }
+                        else
+                        {
+                            await client.SendMessage(
+                                chatId: message.Chat.Id,
+                                text: "Не удалось найти песню на YouTube.",
+                                cancellationToken: token
+                            );
+                        }
                     }
                 }
             }
@@ -206,12 +253,22 @@ namespace Telegram_Bot
                 }
                 else if (callbackQuery.Data == "change_song_name")
                 {
-                    helper.isRenamingSong = true;
-                    await client.SendMessage(
-                        chatId: callbackQuery.Message.Chat.Id,
-                        text: "Введи имя для песни:",
-                        cancellationToken: token
-                    );
+                    if (helper.filePath != null)
+                    {
+                        helper.isRenamingSong = true;
+                        await client.SendMessage(
+                            chatId: callbackQuery.Message.Chat.Id,
+                            text: "Введи имя для песни:",
+                            cancellationToken: token
+                        );
+                    }
+                    else
+                    {
+                        await client.SendMessage(
+                            chatId: callbackQuery.Message.Chat.Id,
+                            text: "Вы уже сохранили песню , изменить название к сожелению не получится",
+                            cancellationToken: token);
+                    }
                 }
                 else if (callbackQuery.Data == "download_song")
                 {
