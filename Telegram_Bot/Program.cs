@@ -20,6 +20,8 @@ using SpotifyAPI.Web;
 using System.Collections.Generic;
 using System.Linq;
 using YoutubeExplode.Common;
+using Telegram_Bot.Services;
+using Telegram_Bot.Enums;
 namespace Telegram_Bot
 {
     internal class Program
@@ -54,6 +56,7 @@ namespace Telegram_Bot
         private static async Task Update(ITelegramBotClient client, Update update, CancellationToken token)
         {
             var message = update.Message;
+            
             if (helper.isRenamingSong && message != null && helper.chatId == message.Chat.Id)
             {
                 string newSongName = message.Text;
@@ -67,13 +70,9 @@ namespace Telegram_Bot
             if (message != null)
             {
                 string userDirectory = $"C:\\Users\\zadre\\Desktop\\Telegram_Bot_Data\\{message.Chat.Id}-{message.Chat.Username ?? "NoUsername"}-{message.Chat.FirstName}";
-                string loggerPath = $"{userDirectory}/messages.txt";
-
-                string loggerMessage;
-                loggerMessage = $"{DateTime.Now}: {message.Text}";
-
+                Logger logger = new Logger(userDirectory,message);
                 if (message.Text == ("/start"))
-                {
+                {   
                     var menuKeyboard = new InlineKeyboardMarkup(new[]
                     {
                 new[] { InlineKeyboardButton.WithCallbackData("Скачать видео с YouTube", "download_song") },
@@ -85,15 +84,6 @@ namespace Telegram_Bot
                         replyMarkup: menuKeyboard,
                         cancellationToken: token
                     );
-
-                    if (!Directory.Exists(userDirectory))
-                    {
-                        Directory.CreateDirectory(userDirectory);
-                    }
-                    if (!File.Exists(loggerPath))
-                    {
-                        File.Create(loggerPath).Dispose();
-                    }
                     return;
                 }
                 else if (message.Text.StartsWith("/song", StringComparison.OrdinalIgnoreCase) ||
@@ -143,8 +133,8 @@ namespace Telegram_Bot
                     YoutubeClient youtubeClient = new YoutubeClient();
                     var video = await youtubeClient.Videos.GetAsync(youtubeUrl);
                     string title = video.Title;
-
-                    loggerMessage += $", Title : {video.Title}";
+                    logger.type = LogMessageType.Search;
+                    logger.musicTitle = title;
 
                     if (video.Duration <= TimeSpan.FromMinutes(10))
                     {
@@ -160,11 +150,11 @@ namespace Telegram_Bot
                     new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
                     new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
                 });
-                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘", replyMarkup: songDownloadedMenuKeyboard);
+                        await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}", replyMarkup: songDownloadedMenuKeyboard);
                         await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-
-                        File.AppendAllText(loggerPath, loggerMessage + "\n");
-                        Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
+                        //log
+                        logger.Log();
+                        
                     }
                     else
                     {
@@ -178,6 +168,8 @@ namespace Telegram_Bot
                     {
                         var selectedTrack = helper.trackList[result - 1];
                         string searchQuery = $"{selectedTrack.Name} {selectedTrack.Artists.FirstOrDefault()?.Name}";
+                        logger.type = LogMessageType.Search;
+                        logger.musicTitle = selectedTrack.Name;
 
                         var searchingMessage = await client.SendMessage(
                             chatId: message.Chat.Id,
@@ -212,11 +204,10 @@ namespace Telegram_Bot
                     new[] { InlineKeyboardButton.WithCallbackData("Изменить название песни🎵", "change_song_name") },
                     new[] { InlineKeyboardButton.WithCallbackData("Сохранить💾", "save_song") }
                 });
-                                await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}💘", replyMarkup: songDownloadedMenuKeyboard);
+                                await client.SendAudio(message.Chat.Id, stream, title: $"{video.Title}", replyMarkup: songDownloadedMenuKeyboard);
                                 await client.DeleteMessage(message.Chat.Id, loadingMessage.MessageId);
-
-                                File.AppendAllText(loggerPath, loggerMessage + "\n");
-                                Console.WriteLine($"{message.Chat.FirstName} | {loggerMessage}");
+                                //logger.log
+                                logger.Log();
                             }
                             else
                             {
@@ -287,6 +278,7 @@ namespace Telegram_Bot
                     );
                 }
             }
+            
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)
         {

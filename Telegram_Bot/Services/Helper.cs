@@ -6,18 +6,18 @@ using System.Text;
 using Telegram.Bot.Types;
 using YoutubeExplode.Videos;
 
-namespace Telegram_Bot
+namespace Telegram_Bot.Services
 {
     public class Helper
     {
         // Флаг, чтобы отслеживать, что пользователь сейчас переименовывает песню
         public ChatId chatId { get; set; }
-        public  bool isRenamingSong { get; set; } = false;
+        public bool isRenamingSong { get; set; } = false;
         // Хранит путь к оригинальному файлу до переименования
-        public  string originalFilePath { get; set; }
+        public string originalFilePath { get; set; }
 
         // Можно использовать для хранения пути к файлу, который будет отправлен
-        public  string filePath { get; set; }
+        public string filePath { get; set; }
         public List<FullTrack> trackList { get; set; }
         public void ChangeEscapedFileName(string titleForChange)
         {
